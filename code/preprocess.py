@@ -55,7 +55,7 @@ parser.add_argument("--person_boxkey2id_p", default=None,
                     help="For reproducing experiments,"
                     " need person_boxkey2id from previous"
                     " preprocessed files to get the same "
-                    "box id so you can you the saved person feature.")
+                    "box id so you can use the saved person feature.")
 
 parser.add_argument("--add_other_box", action="store_true")
 parser.add_argument("--other_box_path", default=None)
@@ -452,6 +452,24 @@ def prepro_each(traj_path, split, prepro_path, args):
           # get the kp feature from starting frame to seq_len frame
           for i, frame_idx in enumerate(frame_idxs):
             key = "%d_%d" % (frame_idx, person_id)
+            if key not in kp_feats:
+              print("Warning - Keypoint Feature: %s %s not exists" % (
+                  videoname, key))
+              # fallback, copy the keypoint from last frame or future
+              fallback_frame_idxs = range(int(frame_idx) - 30,
+                                          int(frame_idx))[::-1]
+              got_fallback = False
+              for fallback_frame_idx in fallback_frame_idxs:
+                new_key = "%d_%d" % (fallback_frame_idx, person_id)
+                if new_key in kp_feats:
+                  kp_feat[count_person, i, :, :] = kp_feats[new_key][:, :2]
+                  got_fallback = True
+                  break
+              # we will leave the keypoint to zeros?
+              if not got_fallback:
+                print("Warning - Keypoint Feature: %s %s uses zeros" % (
+                    videoname, key))
+              continue
             # ignore the kp logits
             kp_feat[count_person, i, :, :] = kp_feats[key][:, :2]
 
@@ -464,13 +482,31 @@ def prepro_each(traj_path, split, prepro_path, args):
             person_box[count_person, i, :] = person_boxes[key]
 
             # save this person key to an id
-            key = "%s_%s" % (videoname, key)
+            key = "%s_%d_%d" % (videoname, frame_idx, person_id)
 
             if key not in person_boxkey2id:
               if args.person_boxkey2id is not None:
                 # use the boxid from previous preprocessed files
                 # to reproduce experiments
-                prev_boxid = args.person_boxkey2id[split][key]
+                if key not in args.person_boxkey2id[split]:
+                  print("Warning - Appearance Feature: %s %s not exists" % (
+                      videoname, key))
+                  # fallback, copy the appearance from last frame or future
+                  fallback_frame_idxs = range(int(frame_idx) - 30,
+                                              int(frame_idx))[::-1]
+                  got_fallback = False
+                  new_key = None
+                  for fallback_frame_idx in fallback_frame_idxs:
+                    new_key = "%s_%d_%d" % (videoname, fallback_frame_idx,
+                                            person_id)
+                    if new_key in args.person_boxkey2id[split]:
+                      got_fallback = True
+                      break
+                  assert (new_key is not None) and got_fallback
+
+                  prev_boxid = args.person_boxkey2id[split][new_key]
+                else:
+                  prev_boxid = args.person_boxkey2id[split][key]
                 person_boxkey2id[key] = prev_boxid
                 person_boxid2key[prev_boxid] = key
               else:
