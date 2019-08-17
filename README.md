@@ -88,7 +88,7 @@ Instructions for testing pretrained models can be [found here](TESTING.md).
 Instructions for training new models can be [found here](TRAINING.md).
 
 ## Preparing Rich Visual Features
-Coming soon.
+Instructions for extracting features can be [found here](code/prepare_data/README.md). Go CVPR 2020!
 
 ## Acknowledgments
 The preprecessing code and evaluation code for trajectories were adapted from [Social-GAN](https://github.com/agrimgupta92/sgan).
