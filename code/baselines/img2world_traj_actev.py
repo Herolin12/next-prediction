@@ -14,6 +14,9 @@ parser.add_argument("traj_path")
 parser.add_argument("h_path",
                     help="path to homography matrices for each scene.")
 parser.add_argument("new_traj_path")
+parser.add_argument("--translate_positive", action="store_true",
+                    help="translate the world coordinates so they are all"
+                    " positive, but then the H matrix will break [not useful]")
 
 
 def get_scene(videoname_):
@@ -63,16 +66,36 @@ if __name__ == "__main__":
 
       H = h_dict[scene]
 
-      with open(target_file, "w") as fw:
-        with open(traj_file, "r") as f:
-          for line in f:
-            fidx, pid, x, y = line.strip().split(delim)
-            x, y = float(x), float(y)
-            if scene == "0002":
-              # all trajectory is under 1920x1080, but original 0002 is 1280x720
-              x = x * (1280 / 1920.0)
-              y = y * (720 / 1080.0)
-            w_x, w_y = get_world_coordinates((x, y), H)
-            fw.writelines(
-                "%s%s%s%s%s%s%s\n" % (fidx, delim, pid, delim, w_x, delim, w_y))
+      new_data = []
+
+      with open(traj_file, "r") as f:
+        for line in f:
+          fidx, pid, x, y = line.strip().split(delim)
+          x, y = float(x), float(y)
+          if scene == "0002":
+            # all trajectory is under 1920x1080, but original 0002 is 1280x720
+            x = x * (1280 / 1920.0)
+            y = y * (720 / 1080.0)
+          w_x, w_y = get_world_coordinates((x, y), H)
+          new_data.append([float(fidx), float(pid), w_x, w_y])
+
+      if args.translate_positive:
+        min_x = np.amin(np.array(new_data)[:, 2])
+
+        min_y = np.amin(np.array(new_data)[:, 3])
+
+        till_pos_x = 0
+        if min_x < 0:
+          till_pos_x = abs(min_x)
+        till_pos_y = 0
+        if min_y < 0:
+          till_pos_y = abs(min_y)
+        new_data = [(fidx, pid, w_x + till_pos_x, w_y + till_pos_y)
+                    for fidx, pid, w_x, w_y in new_data]
+
+
+      with open(target_file, "w") as f:
+        for fidx, pid, w_x, w_y in new_data:
+          f.writelines(
+              "%s%s%s%s%s%s%s\n" % (fidx, delim, pid, delim, w_x, delim, w_y))
 
