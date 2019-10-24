@@ -24,6 +24,8 @@ parser.add_argument("--every", type=int, default=1,
                          " run on every frame")
 parser.add_argument("--down_rate", default=8.0, type=float,
                     help="down-size how many times")
+parser.add_argument("--keep_full", action="store_true",
+                    help="get 512x288 feature")
 
 # ---- gpu stuff. Now only one gpu is used
 parser.add_argument("--gpuid", default=0, type=int)
@@ -37,10 +39,12 @@ parser.add_argument("--curJob", type=int, default=1,
 # city -> 18 + 1
 
 
-def resize_seg_map(seg, down_rate):
+def resize_seg_map(seg, down_rate, keep_full=False):
   img_ = Image.fromarray(seg.astype(dtype=np.uint8))
   w_, h_ = img_.size
   neww, newh = int(w_ / down_rate), int(h_ / down_rate)
+  if keep_full:
+    neww, newh = 512, 288
 
   newimg = img_.resize((neww, newh))  # neareast neighbor
 
@@ -51,7 +55,7 @@ def resize_seg_map(seg, down_rate):
 if __name__ == "__main__":
   args = parser.parse_args()
 
-  input_size = 513
+  input_size = 513  # the model's input size, has to be this
 
   # load the model graph
   print("loading model...")
@@ -112,7 +116,7 @@ if __name__ == "__main__":
 
         """
 
-        seg_map = resize_seg_map(seg_map, args.down_rate)
+        seg_map = resize_seg_map(seg_map, args.down_rate, args.keep_full)
         targetfile = os.path.join(args.out_path, "%s.npy" % imgname)
         np.save(targetfile, seg_map)
 
