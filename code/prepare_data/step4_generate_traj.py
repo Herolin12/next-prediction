@@ -188,7 +188,7 @@ if __name__ == "__main__":
     for videoname in tqdm(filelst[split]):
       npzfile = os.path.join(args.npzpath, "%s.npz" % videoname)
 
-      data = np.load(npzfile)
+      data = np.load(npzfile, allow_pickle=True)
 
       # each frame's all boxes, for getting other boxes
       frameidx2boxes = data["frameidx2boxes"]
